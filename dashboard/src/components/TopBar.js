@@ -1,8 +1,18 @@
 import React from "react";
+import api from "../api";
 
 import Menu from "./Menu";
 
 const TopBar = () => {
+  const handleSignOut = async () => {
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      const frontendUrl = process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000";
+      window.location.assign(`${frontendUrl}/signin`);
+    }
+  };
+
   return (
     <div className="topbar-container">
       <div className="indices-container">
@@ -19,6 +29,9 @@ const TopBar = () => {
       </div>
 
       <Menu />
+      <button type="button" className="btn" onClick={handleSignOut}>
+        Sign out
+      </button>
     </div>
   );
 };
