@@ -25,7 +25,7 @@ const Signup = ({ initialMode = "signup" }) => {
 				password,
 			});
 			const dashboardUrl = process.env.REACT_APP_DASHBOARD_URL || "http://localhost:3001";
-			window.location.assign(dashboardUrl);
+			window.location.assign(isSigningIn ? "/" : dashboardUrl);
 		} catch (requestError) {
 			setError(requestError.response?.data?.error || "Could not reach the server. Try again shortly.");
 		} finally {
