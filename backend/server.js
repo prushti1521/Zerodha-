@@ -87,6 +87,46 @@ function establishSession(req, userId) {
   });
 }
 
+async function updateDemoFunds(userId, amount, mode) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "INSERT INTO demo_funds (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+      [userId],
+    );
+    const balanceResult = await client.query(
+      "SELECT balance::double precision AS balance FROM demo_funds WHERE user_id = $1 FOR UPDATE",
+      [userId],
+    );
+    const currentBalance = balanceResult.rows[0].balance;
+    if (mode === "WITHDRAW" && currentBalance < amount) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const nextBalance = mode === "ADD" ? currentBalance + amount : currentBalance - amount;
+    await client.query(
+      "UPDATE demo_funds SET balance = $2, updated_at = NOW() WHERE user_id = $1",
+      [userId, nextBalance],
+    );
+    const transactionResult = await client.query(
+      `INSERT INTO demo_fund_transactions (user_id, mode, amount, balance_after)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, mode, amount::double precision AS amount,
+                 balance_after::double precision AS "balanceAfter", created_at`,
+      [userId, mode, amount, nextBalance],
+    );
+    await client.query("COMMIT");
+    return transactionResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 app.get("/health", asyncRoute(async (req, res) => {
   await pool.query("SELECT 1");
   res.json({ status: "ok", database: "connected" });
@@ -158,6 +198,47 @@ app.post("/auth/logout", asyncRoute(async (req, res) => {
   });
   res.clearCookie(cookieName, { httpOnly: true, sameSite: cookieSameSite, secure: cookieSecure });
   res.sendStatus(204);
+}));
+
+app.get("/funds", requireAuth, asyncRoute(async (req, res) => {
+  await pool.query(
+    "INSERT INTO demo_funds (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+    [req.session.userId],
+  );
+  const [balanceResult, transactionsResult] = await Promise.all([
+    pool.query(
+      "SELECT balance::double precision AS balance FROM demo_funds WHERE user_id = $1",
+      [req.session.userId],
+    ),
+    pool.query(
+      `SELECT id, mode, amount::double precision AS amount,
+              balance_after::double precision AS "balanceAfter", created_at
+       FROM demo_fund_transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      [req.session.userId],
+    ),
+  ]);
+  res.json({
+    balance: balanceResult.rows[0].balance,
+    transactions: transactionsResult.rows,
+  });
+}));
+
+app.post("/funds/:operation", requireAuth, asyncRoute(async (req, res) => {
+  const mode = req.params.operation === "deposit"
+    ? "ADD"
+    : req.params.operation === "withdraw" ? "WITHDRAW" : null;
+  const amount = Number(req.body.amount);
+
+  if (!mode || !Number.isFinite(amount) || amount <= 0 || amount > 1000000 ||
+      Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-7) {
+    return res.status(400).json({ error: "Enter an amount from 0.01 to 1,000,000 with up to two decimals." });
+  }
+
+  const transaction = await updateDemoFunds(req.session.userId, amount, mode);
+  if (!transaction) {
+    return res.status(400).json({ error: "Demo balance is too low for this withdrawal." });
+  }
+  res.status(201).json({ transaction });
 }));
 
 app.get("/allHoldings", requireAuth, asyncRoute(async (req, res) => {

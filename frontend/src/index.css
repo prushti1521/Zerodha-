@@ -16,6 +16,108 @@ code {
   margin-left: 40px;
 }
 
+.brand-logo {
+  display: block;
+  width: 160px;
+  height: auto;
+}
+
+.navbar-account {
+  margin-left: 28px;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-menu > summary {
+  list-style: none;
+}
+
+.account-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: #344044;
+  cursor: pointer;
+}
+
+.account-trigger:focus-visible {
+  outline: 2px solid #387ed1;
+  outline-offset: 2px;
+}
+
+.account-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8f1fb;
+  color: #2367a8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-chevron {
+  font-size: 11px;
+}
+
+.account-menu-content {
+  position: absolute;
+  z-index: 1050;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid #e2e6e8;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(20 35 40 / 12%);
+}
+
+.account-identity {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-bottom: 1px solid #e8ebed;
+  color: #344044;
+}
+
+.account-identity span {
+  overflow-wrap: anywhere;
+  color: #687477;
+  font-size: 13px;
+}
+
+.account-menu-link,
+.account-menu-button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: #344044;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-menu-link:hover,
+.account-menu-button:hover {
+  background: #f3f6f8;
+  color: #2367a8;
+}
+
 #supportHero{
   background-color: rgb(56, 126, 209);
   color: white;
@@ -110,4 +212,14 @@ code {
   margin: 22px 0 0;
   text-align: center;
   color: #687477;
+}
+
+@media (max-width: 991.98px) {
+  .brand-logo {
+    width: 140px;
+  }
+
+  .navbar-account {
+    margin: 8px 0 0 40px;
+  }
 }

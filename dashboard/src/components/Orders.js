@@ -4,10 +4,17 @@ import api from "../api";
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    api.get("/allOrders").then((response) => setOrders(response.data));
+    api.get("/allOrders")
+      .then((response) => setOrders(response.data))
+      .catch(() => setLoadError(true));
   }, []);
+
+  if (loadError) {
+    return <p className="account-data-error" role="alert">Orders are unavailable. Check the backend connection.</p>;
+  }
 
   if (orders.length > 0) {
     return (

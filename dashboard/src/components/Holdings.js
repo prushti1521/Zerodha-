@@ -6,13 +6,31 @@ import { VerticalGraph } from "./VerticalGraph";
 
 const Holdings = () => {
   const [allHoldings, setAllHoldings] = useState([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    api.get("/allHoldings").then((res) => {
-      // console.log(res.data);
-      setAllHoldings(res.data);
-    });
+    api.get("/allHoldings")
+      .then((res) => setAllHoldings(res.data))
+      .catch(() => setLoadError(true));
   }, []);
+
+  if (loadError) {
+    return <p className="account-data-error" role="alert">Holdings are unavailable. Check the backend connection.</p>;
+  }
+
+  const totalInvestment = allHoldings.reduce(
+    (total, stock) => total + Number(stock.avg) * Number(stock.qty),
+    0,
+  );
+  const currentValue = allHoldings.reduce(
+    (total, stock) => total + Number(stock.price) * Number(stock.qty),
+    0,
+  );
+  const profitLoss = currentValue - totalInvestment;
+  const formatCurrency = (amount) => amount.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   // const labels = ['January', 'February', 'March', 'April', 'May', 'June', 'July'];
   const labels = allHoldings.map((subArray) => subArray["name"]);
@@ -87,19 +105,15 @@ const Holdings = () => {
 
       <div className="row">
         <div className="col">
-          <h5>
-            29,875.<span>55</span>{" "}
-          </h5>
+          <h5>{formatCurrency(totalInvestment)}</h5>
           <p>Total investment</p>
         </div>
         <div className="col">
-          <h5>
-            31,428.<span>95</span>{" "}
-          </h5>
+          <h5>{formatCurrency(currentValue)}</h5>
           <p>Current value</p>
         </div>
         <div className="col">
-          <h5>1,553.40 (+5.20%)</h5>
+          <h5>{formatCurrency(profitLoss)}</h5>
           <p>P&L</p>
         </div>
       </div>

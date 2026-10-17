@@ -7,15 +7,19 @@ import TopBar from "./TopBar";
 const Home = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
     api.get("/auth/me")
-      .then(() => {
-        if (isMounted) setIsAuthenticated(true);
+      .then(({ data }) => {
+        if (isMounted) {
+          setUser(data.user);
+          setIsAuthenticated(true);
+        }
       })
       .catch(() => {
-        const frontendUrl = process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000";
+        const frontendUrl = process.env.REACT_APP_FRONTEND_URL || "http://localhost:3001";
         window.location.assign(`${frontendUrl}/signin`);
       })
       .finally(() => {
@@ -31,8 +35,8 @@ const Home = () => {
 
   return (
     <>
-      <TopBar />
-      <Dashboard />
+      <TopBar user={user} />
+      <Dashboard user={user} />
     </>
   );
 };

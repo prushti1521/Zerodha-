@@ -3,10 +3,17 @@ import api from "../api";
 
 const Positions = () => {
   const [positions, setPositions] = useState([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    api.get("/allPositions").then((response) => setPositions(response.data));
+    api.get("/allPositions")
+      .then((response) => setPositions(response.data))
+      .catch(() => setLoadError(true));
   }, []);
+
+  if (loadError) {
+    return <p className="account-data-error" role="alert">Positions are unavailable. Check the backend connection.</p>;
+  }
 
   return (
     <>

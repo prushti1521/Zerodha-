@@ -1,30 +1,24 @@
 import React, { useState, useContext } from "react";
 
-import axios from "axios";
-
 import GeneralContext from "./GeneralContext";
 
-import { Tooltip, Grow } from "@mui/material";
-
-import {
-  BarChartOutlined,
-  KeyboardArrowDown,
-  KeyboardArrowUp,
-  MoreHoriz,
-} from "@mui/icons-material";
+// Removed MUI imports because they are not required for dashboard rendering.
 
 import { watchlist } from "../data/data";
 import { DoughnutChart } from "./DoughnoutChart";
 
-const labels = watchlist.map((subArray) => subArray["name"]);
-
 const WatchList = () => {
+  const [search, setSearch] = useState("");
+  const [selectedStock, setSelectedStock] = useState(null);
+  const visibleStocks = watchlist.filter((stock) =>
+    stock.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
   const data = {
-    labels,
+    labels: visibleStocks.map((stock) => stock.name),
     datasets: [
       {
         label: "Price",
-        data: watchlist.map((stock) => stock.price),
+        data: visibleStocks.map((stock) => stock.price),
         backgroundColor: [
           "rgba(255, 99, 132, 0.5)",
           "rgba(54, 162, 235, 0.5)",
@@ -82,96 +76,142 @@ const WatchList = () => {
           id="search"
           placeholder="Search eg:infy, bse, nifty fut weekly, gold mcx"
           className="search"
+          aria-label="Search watchlist"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
         />
-        <span className="counts"> {watchlist.length} / 50</span>
+        <span className="counts">{visibleStocks.length} / {watchlist.length}</span>
       </div>
 
       <ul className="list">
-        {watchlist.map((stock, index) => {
-          return <WatchListItem stock={stock} key={index} />;
-        })}
+        {visibleStocks.map((stock) => (
+          <WatchListItem
+            stock={stock}
+            key={stock.name}
+            onShowAnalytics={setSelectedStock}
+          />
+        ))}
       </ul>
+      {visibleStocks.length === 0 && <p className="watchlist-empty">No matching symbols.</p>}
 
       <DoughnutChart data={data} />
+      {selectedStock && (
+        <StockDetailsWindow
+          stock={selectedStock}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
     </div>
   );
 };
 
 export default WatchList;
 
-const WatchListItem = ({ stock }) => {
-  const [showWatchlistActions, setShowWatchlistActions] = useState(false);
-
-  const handleMouseEnter = (e) => {
-    setShowWatchlistActions(true);
-  };
-
-  const handleMouseLeave = (e) => {
-    setShowWatchlistActions(false);
-  };
-
+const WatchListItem = ({ stock, onShowAnalytics }) => {
   return (
-    <li onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <li>
       <div className="item">
         <p className={stock.isDown ? "down" : "up"}>{stock.name}</p>
         <div className="itemInfo">
           <span className="percent">{stock.percent}</span>
           {stock.isDown ? (
-            <KeyboardArrowDown className="down" />
+            <span className="down">↓</span>
           ) : (
-            <KeyboardArrowUp className="down" />
+            <span className="up">↑</span>
           )}
           <span className="price">{stock.price}</span>
         </div>
       </div>
-      {showWatchlistActions && <WatchListActions uid={stock.name} />}
+      <WatchListActions stock={stock} onShowAnalytics={onShowAnalytics} />
     </li>
   );
 };
 
-const WatchListActions = ({ uid }) => {
+const WatchListActions = ({ stock, onShowAnalytics }) => {
   const generalContext = useContext(GeneralContext);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [copyMessage, setCopyMessage] = useState("");
 
-  const handleBuyClick = () => {
-    generalContext.openBuyWindow(uid);
+  const handleOrderClick = (mode) => {
+    generalContext.openOrderWindow(stock.name, mode);
+  };
+
+  const handleCopySymbol = async () => {
+    try {
+      await navigator.clipboard.writeText(stock.name);
+      setCopyMessage("Copied");
+    } catch {
+      setCopyMessage("Copy unavailable");
+    }
   };
 
   return (
-    <span className="actions">
-      <span>
-        <Tooltip
-          title="Buy (B)"
-          placement="top"
-          arrow
-          TransitionComponent={Grow}
-          onClick={handleBuyClick}
+    <div className="actions">
+      <div className="watchlist-action-buttons">
+        <button type="button" className="buy" title={`Buy ${stock.name}`} onClick={() => handleOrderClick("BUY")}>
+          Buy
+        </button>
+        <button type="button" className="sell" title={`Sell ${stock.name}`} onClick={() => handleOrderClick("SELL")}>
+          Sell
+        </button>
+        <button type="button" className="action" title={`Analytics for ${stock.name}`} onClick={() => onShowAnalytics(stock)}>
+          📊
+        </button>
+        <button
+          type="button"
+          className="action more-trigger"
+          title={`More actions for ${stock.name}`}
+          aria-label={`More actions for ${stock.name}`}
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
         >
-          <button className="buy">Buy</button>
-        </Tooltip>
-        <Tooltip
-          title="Sell (S)"
-          placement="top"
-          arrow
-          TransitionComponent={Grow}
-        >
-          <button className="sell">Sell</button>
-        </Tooltip>
-        <Tooltip
-          title="Analytics (A)"
-          placement="top"
-          arrow
-          TransitionComponent={Grow}
-        >
-          <button className="action">
-            <BarChartOutlined className="icon" />
-          </button>
-        </Tooltip>
-        <Tooltip title="More" placement="top" arrow TransitionComponent={Grow}>
-          <button className="action">
-            <MoreHoriz className="icon" />
-          </button>
-        </Tooltip>
-      </span>
-    </span>
+          •••
+        </button>
+        {moreOpen && (
+          <div className="watchlist-more-menu" role="menu">
+            <button type="button" role="menuitem" onClick={() => onShowAnalytics(stock)}>
+              View quote details
+            </button>
+            <button type="button" role="menuitem" onClick={handleCopySymbol}>
+              Copy symbol
+            </button>
+            {copyMessage && <span role="status">{copyMessage}</span>}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
+
+const StockDetailsWindow = ({ stock, onClose }) => (
+  <div className="stock-details-backdrop" role="presentation" onClick={onClose}>
+    <section
+      className="stock-details-window"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="stock-details-title"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <header>
+        <div>
+          <h2 id="stock-details-title">{stock.name}</h2>
+          <p>Sample watchlist quote</p>
+        </div>
+        <button type="button" aria-label="Close quote details" onClick={onClose}>
+          ×
+        </button>
+      </header>
+      <dl>
+        <div>
+          <dt>Last price</dt>
+          <dd>₹{stock.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</dd>
+        </div>
+        <div>
+          <dt>Day change</dt>
+          <dd className={stock.isDown ? "loss" : "profit"}>{stock.percent}</dd>
+        </div>
+      </dl>
+      <p className="stock-details-note">Quote values are sample data and may not be current.</p>
+    </section>
+  </div>
+);

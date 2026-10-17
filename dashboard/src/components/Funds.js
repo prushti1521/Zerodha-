@@ -1,87 +1,140 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import api from "../api";
+
+const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 2,
+}).format(amount);
 
 const Funds = () => {
+  const [fundData, setFundData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeAction, setActiveAction] = useState("");
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get("/funds")
+      .then(({ data }) => {
+        if (isMounted) setFundData(data);
+      })
+      .catch(() => {
+        if (isMounted) setError("Demo balance is unavailable. Check the backend connection.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const transactions = fundData?.transactions || [];
+  const totalAdded = transactions
+    .filter((transaction) => transaction.mode === "ADD")
+    .reduce((total, transaction) => total + Number(transaction.amount), 0);
+  const totalWithdrawn = transactions
+    .filter((transaction) => transaction.mode === "WITHDRAW")
+    .reduce((total, transaction) => total + Number(transaction.amount), 0);
+
+  const handleActionSubmit = async (event) => {
+    event.preventDefault();
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > 1000000) {
+      setError("Enter an amount greater than 0 and no more than 1,000,000.");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    try {
+      await api.post(`/funds/${activeAction}`, { amount: numericAmount });
+      const { data } = await api.get("/funds");
+      setFundData(data);
+      setNotice(activeAction === "deposit" ? "Demo funds added." : "Demo funds withdrawn.");
+      setActiveAction("");
+      setAmount("");
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || "The demo-funds request could not be completed.");
+    }
+  };
+
   return (
-    <>
-      <div className="funds">
-        <p>Instant, zero-cost fund transfers with UPI </p>
-        <Link className="btn btn-green">Add funds</Link>
-        <Link className="btn btn-blue">Withdraw</Link>
+    <section className="funds-page" aria-labelledby="funds-heading">
+      <header className="funds-page-header">
+        <div>
+          <h2 id="funds-heading">Demo funds</h2>
+          <p className="demo-funds-note">Simulated balance only. No real money or payment provider is involved.</p>
+        </div>
+        <div className="demo-funds-actions">
+          <button type="button" className="btn btn-green" disabled={isLoading || !fundData} onClick={() => { setActiveAction("deposit"); setError(""); setNotice(""); }}>
+            Add demo funds
+          </button>
+          <button type="button" className="btn btn-blue" disabled={isLoading || !fundData} onClick={() => { setActiveAction("withdraw"); setError(""); setNotice(""); }}>
+            Withdraw
+          </button>
+        </div>
+      </header>
+
+      {error && <p className="demo-funds-error" role="alert">{error}</p>}
+      {notice && <p className="demo-funds-notice" role="status">{notice}</p>}
+
+      {activeAction && (
+        <form className="demo-funds-form" onSubmit={handleActionSubmit}>
+          <label htmlFor="demo-funds-amount">
+            {activeAction === "deposit" ? "Amount to add" : "Amount to withdraw"}
+          </label>
+          <input
+            id="demo-funds-amount"
+            name="amount"
+            type="number"
+            min="0.01"
+            max="1000000"
+            step="0.01"
+            required
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+          <button type="submit" className="btn btn-blue">Confirm</button>
+          <button type="button" className="btn btn-grey" onClick={() => setActiveAction("")}>Cancel</button>
+        </form>
+      )}
+
+      <div className="demo-funds-summary">
+        <div><span>Available demo cash</span><strong>{fundData ? formatCurrency(Number(fundData.balance)) : isLoading ? "Loading" : "—"}</strong></div>
+        <div><span>Total added</span><strong>{fundData ? formatCurrency(totalAdded) : "—"}</strong></div>
+        <div><span>Total withdrawn</span><strong>{fundData ? formatCurrency(totalWithdrawn) : "—"}</strong></div>
       </div>
 
-      <div className="row">
-        <div className="col">
-          <span>
-            <p>Equity</p>
-          </span>
-
-          <div className="table">
-            <div className="data">
-              <p>Available margin</p>
-              <p className="imp colored">4,043.10</p>
-            </div>
-            <div className="data">
-              <p>Used margin</p>
-              <p className="imp">3,757.30</p>
-            </div>
-            <div className="data">
-              <p>Available cash</p>
-              <p className="imp">4,043.10</p>
-            </div>
-            <hr />
-            <div className="data">
-              <p>Opening Balance</p>
-              <p>4,043.10</p>
-            </div>
-            <div className="data">
-              <p>Opening Balance</p>
-              <p>3736.40</p>
-            </div>
-            <div className="data">
-              <p>Payin</p>
-              <p>4064.00</p>
-            </div>
-            <div className="data">
-              <p>SPAN</p>
-              <p>0.00</p>
-            </div>
-            <div className="data">
-              <p>Delivery margin</p>
-              <p>0.00</p>
-            </div>
-            <div className="data">
-              <p>Exposure</p>
-              <p>0.00</p>
-            </div>
-            <div className="data">
-              <p>Options premium</p>
-              <p>0.00</p>
-            </div>
-            <hr />
-            <div className="data">
-              <p>Collateral (Liquid funds)</p>
-              <p>0.00</p>
-            </div>
-            <div className="data">
-              <p>Collateral (Equity)</p>
-              <p>0.00</p>
-            </div>
-            <div className="data">
-              <p>Total Collateral</p>
-              <p>0.00</p>
-            </div>
+      <section className="demo-funds-history" aria-labelledby="fund-history-heading">
+        <h3 id="fund-history-heading">Activity</h3>
+        {transactions.length === 0 ? (
+          <p>{fundData ? "No demo-funds activity yet." : "Activity is unavailable."}</p>
+        ) : (
+          <div className="order-table">
+            <table>
+              <thead>
+                <tr><th>Type</th><th>Amount</th><th>Balance after</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                {transactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td>{transaction.mode === "ADD" ? "Added" : "Withdrawn"}</td>
+                    <td>{formatCurrency(Number(transaction.amount))}</td>
+                    <td>{formatCurrency(Number(transaction.balanceAfter))}</td>
+                    <td>{new Date(transaction.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        <div className="col">
-          <div className="commodity">
-            <p>You don't have a commodity account</p>
-            <Link className="btn btn-blue">Open Account</Link>
-          </div>
-        </div>
-      </div>
-    </>
+        )}
+      </section>
+    </section>
   );
 };
 

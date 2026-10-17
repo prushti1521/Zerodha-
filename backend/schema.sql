@@ -41,6 +41,22 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS demo_funds (
+  user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  balance NUMERIC(14, 2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS demo_fund_transactions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  mode TEXT NOT NULL CHECK (mode IN ('ADD', 'WITHDRAW')),
+  amount NUMERIC(14, 2) NOT NULL CHECK (amount > 0),
+  balance_after NUMERIC(14, 2) NOT NULL CHECK (balance_after >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS holdings_user_id_idx ON holdings(user_id);
 CREATE INDEX IF NOT EXISTS positions_user_id_idx ON positions(user_id);
 CREATE INDEX IF NOT EXISTS orders_user_created_idx ON orders(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS demo_fund_transactions_user_created_idx ON demo_fund_transactions(user_id, created_at DESC);
