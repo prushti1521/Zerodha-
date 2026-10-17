@@ -12,6 +12,73 @@ dashboard/  Protected React app: summary, watchlist, orders, holdings, positions
 
 Each folder has its own `package.json`; install and run each app separately.
 
+## Languages and Formats
+
+- JavaScript with ES modules and JSX in the React applications
+- JavaScript with CommonJS modules in the Node.js API
+- SQL for PostgreSQL schema and queries
+- CSS for application styling; HTML entry documents are in each app's `public/` directory
+- JSON for package manifests and configuration; Markdown for documentation
+
+## Frontend Technologies
+
+### Public Website
+
+- React 19 and React DOM
+- React Router DOM 7 for page routing
+- Create React App through `react-scripts` 5
+- Axios for API requests
+- Font Awesome Free 6 for account-menu icons
+- Custom CSS
+
+Bootstrap is declared as a dependency, but the current public-site source does not import Bootstrap's stylesheet.
+
+### Trading Dashboard
+
+- React 19 and React DOM
+- React Router DOM 7 for dashboard sections
+- Create React App through `react-scripts` 5
+- Axios for API requests
+- Chart.js 4 with `react-chartjs-2` for charts
+- Custom CSS
+
+Material UI, Emotion, and `react-transition-group` are declared in the dashboard package but are not imported by the current dashboard source.
+
+## Backend Technologies
+
+- Node.js runtime with CommonJS modules
+- Express 4 for HTTP routes and middleware
+- `pg` for PostgreSQL connections
+- `bcryptjs` for password hashing
+- `express-session` with `connect-pg-simple` for PostgreSQL-backed sessions
+- `cors` for cross-origin API access
+- `dotenv` for local environment configuration
+- Nodemon for backend development reloads
+
+## Database
+
+- PostgreSQL relational database
+- SQL schema in `backend/schema.sql`
+- `pg` Node.js driver
+- Tables for users, holdings, positions, orders, demo balances, demo-funds transactions, and sessions
+- Per-user financial data is protected by authenticated API queries; BUY/SELL updates orders, holdings, cash, and the transaction ledger in one database transaction
+
+## API
+
+- REST-style JSON API served by Express
+- Axios clients in the public website and dashboard
+- Cookie-based sessions; credentials are sent with API requests
+- CORS allowlist for the local website and dashboard origins
+- Health, signup, signin, signout, holdings, positions, orders, and demo-funds endpoints are listed in [Data and API](#data-and-api)
+
+## Development Tools and Other Technologies
+
+- npm for dependency installation and scripts; each app has its own `package.json`
+- ESLint configuration supplied by Create React App
+- Jest test runner and Testing Library packages declared for React tests
+- Web Vitals package declared by the public frontend
+- No TypeScript source files or TypeScript compiler are configured
+
 ## Requirements
 
 - Node.js and npm
