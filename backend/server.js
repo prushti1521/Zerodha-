@@ -127,6 +127,98 @@ async function updateDemoFunds(userId, amount, mode) {
   }
 }
 
+async function executeOrder(userId, name, quantity, price, mode) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [userId]);
+    await client.query(
+      "INSERT INTO demo_funds (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+      [userId],
+    );
+    const fundsResult = await client.query(
+      "SELECT balance::double precision AS balance FROM demo_funds WHERE user_id = $1 FOR UPDATE",
+      [userId],
+    );
+    const balance = fundsResult.rows[0].balance;
+    const holdingResult = await client.query(
+      `SELECT id, qty::double precision AS qty, avg::double precision AS avg
+       FROM holdings WHERE user_id = $1 AND name = $2 ORDER BY id LIMIT 1 FOR UPDATE`,
+      [userId, name],
+    );
+    const holding = holdingResult.rows[0];
+    const orderValue = Number((quantity * price).toFixed(2));
+
+    if (mode === "BUY" && balance < orderValue) {
+      await client.query("ROLLBACK");
+      return { error: "Not enough demo funds. Add demo funds before buying." };
+    }
+    if (mode === "SELL" && (!holding || holding.qty < quantity)) {
+      await client.query("ROLLBACK");
+      return { error: "Not enough shares available to sell." };
+    }
+
+    const nextBalance = Number((mode === "BUY" ? balance - orderValue : balance + orderValue).toFixed(2));
+    await client.query(
+      "UPDATE demo_funds SET balance = $2, updated_at = NOW() WHERE user_id = $1",
+      [userId, nextBalance],
+    );
+
+    if (mode === "BUY") {
+      const nextQuantity = Number(holding?.qty || 0) + quantity;
+      const nextAverage = holding
+        ? ((holding.qty * holding.avg) + orderValue) / nextQuantity
+        : price;
+      const net = nextAverage > 0 ? ((price - nextAverage) / nextAverage) * 100 : 0;
+      const values = [nextQuantity, nextAverage, price, `${net >= 0 ? "+" : ""}${net.toFixed(2)}%`, price < nextAverage, userId, name];
+
+      if (holding) {
+        await client.query(
+          `UPDATE holdings SET qty = $1, avg = $2, price = $3, net = $4,
+                               day = '0.00%', is_loss = $5
+           WHERE id = $6 AND user_id = $7`,
+          [...values.slice(0, 5), holding.id, userId],
+        );
+      } else {
+        await client.query(
+          `INSERT INTO holdings (user_id, name, qty, avg, price, net, day, is_loss)
+           VALUES ($6, $7, $1, $2, $3, $4, '0.00%', $5)`,
+          values,
+        );
+      }
+    } else if (holding.qty === quantity) {
+      await client.query("DELETE FROM holdings WHERE id = $1 AND user_id = $2", [holding.id, userId]);
+    } else {
+      const nextQuantity = holding.qty - quantity;
+      const net = holding.avg > 0 ? ((price - holding.avg) / holding.avg) * 100 : 0;
+      await client.query(
+        `UPDATE holdings SET qty = $1, price = $2, net = $3, day = '0.00%', is_loss = $4
+         WHERE id = $5 AND user_id = $6`,
+        [nextQuantity, price, `${net >= 0 ? "+" : ""}${net.toFixed(2)}%`, price < holding.avg, holding.id, userId],
+      );
+    }
+
+    const orderResult = await client.query(
+      `INSERT INTO orders (user_id, name, qty, price, mode)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, qty, price::double precision AS price, mode, created_at`,
+      [userId, name, quantity, price, mode],
+    );
+    await client.query(
+      `INSERT INTO demo_fund_transactions (user_id, mode, amount, balance_after)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, mode, orderValue, nextBalance],
+    );
+    await client.query("COMMIT");
+    return { order: orderResult.rows[0] };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 app.get("/health", asyncRoute(async (req, res) => {
   await pool.query("SELECT 1");
   res.json({ status: "ok", database: "connected" });
@@ -275,18 +367,17 @@ app.post("/newOrder", requireAuth, asyncRoute(async (req, res) => {
   const quantity = Number(qty);
   const orderPrice = Number(price);
 
-  if (typeof name !== "string" || !name.trim() || !Number.isSafeInteger(quantity) || quantity <= 0 ||
-      !Number.isFinite(orderPrice) || orderPrice < 0 || !["BUY", "SELL"].includes(mode)) {
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 100 ||
+      !Number.isSafeInteger(quantity) || quantity <= 0 || !Number.isFinite(orderPrice) ||
+      orderPrice <= 0 || !["BUY", "SELL"].includes(mode)) {
     return res.status(400).json({ error: "Invalid order details." });
   }
 
-  const result = await pool.query(
-    `INSERT INTO orders (user_id, name, qty, price, mode)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, name, qty, price::double precision AS price, mode, created_at`,
-    [req.session.userId, name.trim(), quantity, orderPrice, mode],
-  );
-  res.status(201).json(result.rows[0]);
+  const result = await executeOrder(req.session.userId, name.trim(), quantity, orderPrice, mode);
+  if (result.error) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.status(201).json(result.order);
 }));
 
 app.use((error, req, res, next) => {

@@ -50,11 +50,17 @@ CREATE TABLE IF NOT EXISTS demo_funds (
 CREATE TABLE IF NOT EXISTS demo_fund_transactions (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  mode TEXT NOT NULL CHECK (mode IN ('ADD', 'WITHDRAW')),
+  mode TEXT NOT NULL CHECK (mode IN ('ADD', 'WITHDRAW', 'BUY', 'SELL')),
   amount NUMERIC(14, 2) NOT NULL CHECK (amount > 0),
   balance_after NUMERIC(14, 2) NOT NULL CHECK (balance_after >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE demo_fund_transactions
+  DROP CONSTRAINT IF EXISTS demo_fund_transactions_mode_check;
+ALTER TABLE demo_fund_transactions
+  ADD CONSTRAINT demo_fund_transactions_mode_check
+  CHECK (mode IN ('ADD', 'WITHDRAW', 'BUY', 'SELL'));
 
 CREATE INDEX IF NOT EXISTS holdings_user_id_idx ON holdings(user_id);
 CREATE INDEX IF NOT EXISTS positions_user_id_idx ON positions(user_id);

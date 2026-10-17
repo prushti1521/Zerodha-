@@ -82,6 +82,7 @@ const WatchList = () => {
         />
         <span className="counts">{visibleStocks.length} / {watchlist.length}</span>
       </div>
+      <p className="watchlist-data-note">Sample quotes, not live market prices.</p>
 
       <ul className="list">
         {visibleStocks.map((stock) => (
@@ -133,7 +134,7 @@ const WatchListActions = ({ stock, onShowAnalytics }) => {
   const [copyMessage, setCopyMessage] = useState("");
 
   const handleOrderClick = (mode) => {
-    generalContext.openOrderWindow(stock.name, mode);
+    generalContext.openOrderWindow(stock.name, mode, stock.price);
   };
 
   const handleCopySymbol = async () => {

@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../api";
+import api, { getApiErrorMessage } from "../api";
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     api.get("/allOrders")
       .then((response) => setOrders(response.data))
-      .catch(() => setLoadError(true));
+      .catch((error) => setLoadError(getApiErrorMessage(error, "Orders")));
   }, []);
 
   if (loadError) {
-    return <p className="account-data-error" role="alert">Orders are unavailable. Check the backend connection.</p>;
+    return <p className="account-data-error" role="alert">{loadError}</p>;
   }
 
   if (orders.length > 0) {

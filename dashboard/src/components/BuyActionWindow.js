@@ -1,12 +1,12 @@
 import React, { useContext, useState } from "react";
-import api from "../api";
+import api, { getApiErrorMessage } from "../api";
 import GeneralContext from "./GeneralContext";
 
 import "./BuyActionWindow.css";
 
-const BuyActionWindow = ({ uid, mode = "BUY" }) => {
+const BuyActionWindow = ({ uid, mode = "BUY", initialPrice = 0 }) => {
   const [stockQuantity, setStockQuantity] = useState(1);
-  const [stockPrice, setStockPrice] = useState(0.0);
+  const [stockPrice, setStockPrice] = useState(initialPrice);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const generalContext = useContext(GeneralContext);
@@ -30,7 +30,7 @@ const BuyActionWindow = ({ uid, mode = "BUY" }) => {
       });
       generalContext.closeBuyWindow();
     } catch (requestError) {
-      setError("Order could not be saved. Check the backend connection and try again.");
+      setError(getApiErrorMessage(requestError, "Order"));
     } finally {
       setSubmitting(false);
     }
@@ -39,6 +39,7 @@ const BuyActionWindow = ({ uid, mode = "BUY" }) => {
   const handleCancelClick = () => {
     generalContext.closeBuyWindow();
   };
+  const orderValue = Number(stockQuantity) * Number(stockPrice);
 
   return (
     <div className="container" id="buy-window" draggable="true">
@@ -72,7 +73,7 @@ const BuyActionWindow = ({ uid, mode = "BUY" }) => {
       </div>
 
       <div className="buttons">
-        <span>Margin required ₹140.65</span>
+        <span>Estimated order value ₹{orderValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         <div>
           <button type="button" className="btn btn-blue" onClick={handleOrderClick} disabled={submitting}>
             {submitting ? "Saving…" : mode === "BUY" ? "Buy" : "Sell"}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "../api";
+import api, { getApiErrorMessage } from "../api";
 
 const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -10,7 +10,7 @@ const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
 const Summary = ({ user }) => {
   const [holdings, setHoldings] = useState(null);
   const [availableFunds, setAvailableFunds] = useState(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -19,12 +19,12 @@ const Summary = ({ user }) => {
       if (holdingsResult.status === "fulfilled") {
         setHoldings(holdingsResult.value.data);
       } else {
-        setLoadError(true);
+        setLoadError(getApiErrorMessage(holdingsResult.reason, "Account holdings"));
       }
       if (fundsResult.status === "fulfilled") {
         setAvailableFunds(Number(fundsResult.value.data.balance));
       } else {
-        setLoadError(true);
+        setLoadError((currentError) => currentError || getApiErrorMessage(fundsResult.reason, "Account funds"));
       }
     });
 
@@ -55,7 +55,7 @@ const Summary = ({ user }) => {
         <hr className="divider" />
       </div>
 
-      {loadError && <p className="account-data-error" role="alert">Account totals are unavailable. Check the backend connection.</p>}
+      {loadError && <p className="account-data-error" role="alert">{loadError}</p>}
 
       <div className="section">
         <span>

@@ -965,6 +965,13 @@ hr {
   font-size: 0.85rem;
 }
 
+.watchlist-data-note {
+  margin: 0;
+  padding: 0 14px 6px;
+  color: #858585;
+  font-size: 11px;
+}
+
 .stock-details-backdrop {
   position: fixed;
   z-index: 20;
@@ -1157,6 +1164,36 @@ hr {
 
 .demo-funds-history table {
   width: 100%;
+}
+
+.dashboard-connection-error {
+  width: min(calc(100% - 32px), 620px);
+  margin: 12vh auto;
+  padding: 24px;
+  border: 1px solid #e3e5e7;
+  background: #fff;
+  color: #444;
+}
+
+.dashboard-connection-error h1 {
+  margin: 0 0 12px;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.dashboard-connection-error p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.dashboard-connection-error button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 3px;
+  background: #387ed1;
+  color: #fff;
+  cursor: pointer;
 }
 
 

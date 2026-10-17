@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "../api";
+import api, { getApiErrorMessage } from "../api";
 
 const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -21,8 +21,8 @@ const Funds = () => {
       .then(({ data }) => {
         if (isMounted) setFundData(data);
       })
-      .catch(() => {
-        if (isMounted) setError("Demo balance is unavailable. Check the backend connection.");
+      .catch((requestError) => {
+        if (isMounted) setError(getApiErrorMessage(requestError, "Demo balance"));
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -35,10 +35,10 @@ const Funds = () => {
 
   const transactions = fundData?.transactions || [];
   const totalAdded = transactions
-    .filter((transaction) => transaction.mode === "ADD")
+    .filter((transaction) => ["ADD", "SELL"].includes(transaction.mode))
     .reduce((total, transaction) => total + Number(transaction.amount), 0);
   const totalWithdrawn = transactions
-    .filter((transaction) => transaction.mode === "WITHDRAW")
+    .filter((transaction) => ["WITHDRAW", "BUY"].includes(transaction.mode))
     .reduce((total, transaction) => total + Number(transaction.amount), 0);
 
   const handleActionSubmit = async (event) => {
@@ -59,7 +59,7 @@ const Funds = () => {
       setActiveAction("");
       setAmount("");
     } catch (requestError) {
-      setError(requestError.response?.data?.error || "The demo-funds request could not be completed.");
+      setError(getApiErrorMessage(requestError, "Demo-funds request"));
     }
   };
 
@@ -106,8 +106,8 @@ const Funds = () => {
 
       <div className="demo-funds-summary">
         <div><span>Available demo cash</span><strong>{fundData ? formatCurrency(Number(fundData.balance)) : isLoading ? "Loading" : "—"}</strong></div>
-        <div><span>Total added</span><strong>{fundData ? formatCurrency(totalAdded) : "—"}</strong></div>
-        <div><span>Total withdrawn</span><strong>{fundData ? formatCurrency(totalWithdrawn) : "—"}</strong></div>
+        <div><span>Cash added / sale proceeds</span><strong>{fundData ? formatCurrency(totalAdded) : "—"}</strong></div>
+        <div><span>Cash withdrawn / buy cost</span><strong>{fundData ? formatCurrency(totalWithdrawn) : "—"}</strong></div>
       </div>
 
       <section className="demo-funds-history" aria-labelledby="fund-history-heading">
@@ -123,7 +123,7 @@ const Funds = () => {
               <tbody>
                 {transactions.map((transaction) => (
                   <tr key={transaction.id}>
-                    <td>{transaction.mode === "ADD" ? "Added" : "Withdrawn"}</td>
+                    <td>{{ ADD: "Added", WITHDRAW: "Withdrawn", BUY: "Buy", SELL: "Sell" }[transaction.mode]}</td>
                     <td>{formatCurrency(Number(transaction.amount))}</td>
                     <td>{formatCurrency(Number(transaction.balanceAfter))}</td>
                     <td>{new Date(transaction.created_at).toLocaleString()}</td>
